@@ -78,6 +78,6 @@ class HomeController extends GetxController {
   }
 
   void goToCheckout(GameModel game) {
-    Get.toNamed(AppRoutes.paymentData, arguments: game);
+    Get.toNamed(AppRoutes.detail, arguments: game);
   }
 }

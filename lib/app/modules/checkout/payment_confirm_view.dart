@@ -25,27 +25,87 @@ class PaymentConfirmView extends GetView<CheckoutController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _PromoCard(gameTitle: order.gameTitle),
+            _PromoCard(totalPrice: order.totalPrice),
             const SizedBox(height: 24),
             _PaymentInfo(order: order),
             const SizedBox(height: 20),
             _PromoCodeField(),
-            const SizedBox(height: 28),
-            GetX<CheckoutController>(
-              builder: (ctrl) => ElevatedButton(
-                onPressed: ctrl.isLoading.value ? null : ctrl.pay,
-                child: ctrl.isLoading.value
-                    ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                    : const Text('Pay'),
+            const SizedBox(height: 12),
+            // Mostrar descuento aplicado si hay promo
+            Obx(() {
+              if (controller.discount.value <= 0) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Descuento aplicado',
+                        style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600)),
+                    Obx(() => Text(
+                      '-\$${controller.discount.value.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    )),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+            // Total final
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.lightBlue,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total a pagar',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: AppTheme.textDark,
+                      )),
+                  Obx(() => Text(
+                    '\$${controller.totalPrice.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  )),
+                ],
               ),
             ),
+            const SizedBox(height: 28),
+            Obx(() => ElevatedButton(
+              onPressed:
+              controller.isLoading.value ? null : controller.pay,
+              child: controller.isLoading.value
+                  ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+                  : const Text('Pay'),
+            )),
             const SizedBox(height: 20),
           ],
         ),
@@ -55,8 +115,8 @@ class PaymentConfirmView extends GetView<CheckoutController> {
 }
 
 class _PromoCard extends StatelessWidget {
-  final String gameTitle;
-  const _PromoCard({required this.gameTitle});
+  final double totalPrice;
+  const _PromoCard({required this.totalPrice});
 
   @override
   Widget build(BuildContext context) {
@@ -83,9 +143,10 @@ class _PromoCard extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               )),
           const SizedBox(height: 4),
-          Text('On your first order — $gameTitle',
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 14)),
+          Text(
+            'Subtotal: \$${totalPrice.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
           const SizedBox(height: 12),
           Container(
             padding:
@@ -157,11 +218,11 @@ class _PaymentInfo extends StatelessWidget {
                       color: AppTheme.textDark,
                     ),
                   ),
-                  Text('Master Card ending ${order.cardNumber}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textGrey,
-                      )),
+                  Text(
+                    'Master Card ending ${order.cardNumber}',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textGrey),
+                  ),
                 ],
               ),
             ],

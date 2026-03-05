@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/models/game_model.dart';
 import '../../core/theme/app_theme.dart';
+import '../../routes/app_routes.dart';
+import '../cart/cart_controller.dart';
 import 'home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
@@ -29,12 +31,12 @@ class HomeView extends GetView<HomeController> {
 
   // ── Header estático, no necesita Obx
   Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('GameStore 🎮',
@@ -47,14 +49,66 @@ class HomeView extends GetView<HomeController> {
                   style: TextStyle(fontSize: 13, color: AppTheme.textGrey)),
             ],
           ),
-          CircleAvatar(
-            backgroundColor: AppTheme.primaryBlue,
-            child: Icon(Icons.person, color: Colors.white),
+          Row(
+            children: [
+              // ── Ícono carrito con badge
+              Obx(() {
+                final cart = Get.find<CartController>();
+                final count = cart.totalItems;
+                return GestureDetector(
+                  onTap: () => Get.toNamed(AppRoutes.cart),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardWhite,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.shopping_cart_outlined,
+                            color: AppTheme.primaryBlue),
+                      ),
+                      if (count > 0)
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.redAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text('$count',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(width: 10),
+              const CircleAvatar(
+                backgroundColor: AppTheme.primaryBlue,
+                child: Icon(Icons.person, color: Colors.white),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+
 
   Widget _buildSearchBar() {
     return Padding(

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
-import '../../data/models/game_model.dart';
 import '../../data/models/order_model.dart';
+import '../../data/models/saved_card_model.dart';
 import '../../data/repositories/order_repository.dart';
 import '../../routes/app_routes.dart';
+import '../cart/cart_controller.dart';
 
 class CheckoutController extends GetxController {
   final IOrderRepository _repository;
@@ -23,8 +24,11 @@ class CheckoutController extends GetxController {
   final RxBool saveCard = true.obs;
   final RxDouble discount = 0.0.obs;
   final RxBool isLoading = false.obs;
+  final RxBool hasSavedCard = false.obs;
 
-  late GameModel currentGame;
+  // ── Datos internos
+  double _cartTotal = 0.0;
+  SavedCardModel? _savedCard;
 
   static const _validPromo = 'PROMO20-08';
   static const _promoDiscount = 50.0;
@@ -32,7 +36,9 @@ class CheckoutController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    currentGame = Get.arguments as GameModel;
+    final args = Get.arguments as Map<String, dynamic>;
+    _cartTotal = (args['total'] as num).toDouble();
+    _loadSavedCard();
   }
 
   @override
@@ -45,7 +51,31 @@ class CheckoutController extends GetxController {
     super.onClose();
   }
 
-  double get totalPrice => currentGame.price - discount.value;
+  // ── Getters
+  double get totalPrice =>
+      (_cartTotal - discount.value).clamp(0.0, double.infinity);
+
+  // ── Cargar tarjeta guardada desde Hive
+  void _loadSavedCard() {
+    _savedCard = _repository.getSavedCard();
+    hasSavedCard.value = _savedCard != null;
+  }
+
+  /// Autocompleta el formulario con la tarjeta guardada en Hive
+  void autoFillCard() {
+    if (_savedCard == null) return;
+    cardNumberController.text = _savedCard!.cardNumber;
+    cardHolderController.text = _savedCard!.cardHolder;
+    validUntilController.text = _savedCard!.validUntil;
+    selectedPayment.value = _savedCard!.paymentMethod;
+    Get.snackbar(
+      '✅ Autocompletado',
+      'Datos de tarjeta cargados correctamente',
+      backgroundColor: Colors.green.withValues(alpha: 0.9),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+    );
+  }
 
   void selectPayment(String method) => selectedPayment.value = method;
 
@@ -64,7 +94,7 @@ class CheckoutController extends GetxController {
       discount.value = 0.0;
       Get.snackbar(
         'Código inválido',
-        'El código no es válido',
+        'El código ingresado no es válido',
         backgroundColor: Colors.redAccent.withValues(alpha: 0.9),
         colorText: Colors.white,
       );
@@ -73,15 +103,25 @@ class CheckoutController extends GetxController {
 
   void proceedToConfirm() {
     if (formKey.currentState?.validate() ?? false) {
-      final last4 = cardNumberController.text.replaceAll(' ', '');
-      final displayCard = last4.length >= 4
-          ? '**${last4.substring(last4.length - 4)}'
+      final rawNumber = cardNumberController.text.replaceAll(' ', '');
+      final displayCard = rawNumber.length >= 4
+          ? '**${rawNumber.substring(rawNumber.length - 4)}'
           : '****';
+
+      // ── Guardar tarjeta en Hive si el toggle está activo
+      if (saveCard.value) {
+        _repository.saveCard(SavedCardModel(
+          cardNumber: cardNumberController.text.trim(),
+          cardHolder: cardHolderController.text.trim(),
+          validUntil: validUntilController.text.trim(),
+          paymentMethod: selectedPayment.value,
+        ));
+      }
 
       final order = OrderModel(
         id: const Uuid().v4(),
-        gameId: currentGame.id,
-        gameTitle: currentGame.title,
+        gameId: 'cart',
+        gameTitle: 'Carrito de compras',
         totalPrice: totalPrice,
         paymentMethod: selectedPayment.value,
         cardNumber: displayCard,
@@ -100,13 +140,24 @@ class CheckoutController extends GetxController {
   Future<void> pay() async {
     isLoading.value = true;
     final order = Get.arguments as OrderModel;
+
     await _repository.placeOrder(order);
+
+    // Verificación en consola
+    final orders = _repository.fetchOrders();
+    debugPrint('📦 Órdenes guardadas en Hive: ${orders.length}');
+    for (final o in orders) {
+      debugPrint(
+          '  → ${o.id} | ${o.gameTitle} | \$${o.totalPrice} | ${o.cardHolder}');
+    }
+
+    Get.find<CartController>().clearCart();
     isLoading.value = false;
 
     Get.offAllNamed(AppRoutes.home);
     Get.snackbar(
       '✅ Pago exitoso',
-      '¡Gracias por tu compra de ${order.gameTitle}!',
+      '¡Gracias por tu compra! Total: \$${order.totalPrice.toStringAsFixed(2)}',
       duration: const Duration(seconds: 4),
       backgroundColor: Colors.green.withValues(alpha: 0.95),
       colorText: Colors.white,

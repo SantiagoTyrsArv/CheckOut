@@ -26,6 +26,7 @@ class PaymentDataView extends GetView<CheckoutController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _TotalPrice(),
+              _SavedCardBanner(),
               const SizedBox(height: 24),
               _PaymentMethodSelector(),
               const SizedBox(height: 24),
@@ -45,6 +46,8 @@ class PaymentDataView extends GetView<CheckoutController> {
     );
   }
 }
+
+// ── Total ──────────────────────────────────────────────────────────────────────
 
 class _TotalPrice extends GetView<CheckoutController> {
   @override
@@ -68,6 +71,58 @@ class _TotalPrice extends GetView<CheckoutController> {
   }
 }
 
+// ── Banner tarjeta guardada ────────────────────────────────────────────────────
+
+class _SavedCardBanner extends GetView<CheckoutController> {
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (!controller.hasSavedCard.value) return const SizedBox.shrink();
+      return GestureDetector(
+        onTap: controller.autoFillCard,
+        child: Container(
+          margin: const EdgeInsets.only(top: 16),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.lightBlue,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.credit_card, color: AppTheme.primaryBlue),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Tarjeta guardada detectada',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textDark,
+                          fontSize: 13,
+                        )),
+                    Text('Toca para autocompletar el formulario',
+                        style: TextStyle(
+                          color: AppTheme.textGrey,
+                          fontSize: 12,
+                        )),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios,
+                  size: 14, color: AppTheme.primaryBlue),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
+// ── Método de pago ─────────────────────────────────────────────────────────────
+
 class _PaymentMethodSelector extends GetView<CheckoutController> {
   static const _methods = [
     {'key': 'paypal', 'label': 'PayPal'},
@@ -87,64 +142,66 @@ class _PaymentMethodSelector extends GetView<CheckoutController> {
               color: AppTheme.textDark,
             )),
         const SizedBox(height: 10),
-        GetX<CheckoutController>(
-          builder: (ctrl) => Row(
-            children: _methods.map((m) {
-              final isSelected = ctrl.selectedPayment.value == m['key'];
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => ctrl.selectPayment(m['key']!),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppTheme.primaryBlue
-                          : AppTheme.lightBlue,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: isSelected
-                          ? [
-                        BoxShadow(
-                          color: AppTheme.primaryBlue
-                              .withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        )
-                      ]
-                          : [],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(m['label']!,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppTheme.primaryBlue,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            )),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.check_circle,
-                          size: 16,
-                          color: isSelected
-                              ? Colors.white
-                              : AppTheme.primaryBlue.withValues(alpha: 0.4),
-                        ),
-                      ],
-                    ),
+        Obx(() => Row(
+          children: _methods.map((m) {
+            final isSelected =
+                controller.selectedPayment.value == m['key'];
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => controller.selectPayment(m['key']!),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.primaryBlue
+                        : AppTheme.lightBlue,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: isSelected
+                        ? [
+                      BoxShadow(
+                        color: AppTheme.primaryBlue
+                            .withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                        : [],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(m['label']!,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.primaryBlue,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          )),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: isSelected
+                            ? Colors.white
+                            : AppTheme.primaryBlue
+                            .withValues(alpha: 0.4),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-        ),
+              ),
+            );
+          }).toList(),
+        )),
       ],
     );
   }
 }
+
+// ── Formulario tarjeta ─────────────────────────────────────────────────────────
 
 class _CardForm extends GetView<CheckoutController> {
   @override
@@ -253,7 +310,8 @@ class _CardForm extends GetView<CheckoutController> {
       decoration: const InputDecoration(
         hintText: 'Month / Year',
         border: InputBorder.none,
-        hintStyle: TextStyle(color: AppTheme.textGrey, fontSize: 13),
+        hintStyle:
+        TextStyle(color: AppTheme.textGrey, fontSize: 13),
       ),
       validator: (v) =>
       (v == null || v.isEmpty) ? 'Requerido' : null,
@@ -286,10 +344,12 @@ class _CardForm extends GetView<CheckoutController> {
       decoration: const InputDecoration(
         hintText: 'Your name and surname',
         border: InputBorder.none,
-        hintStyle: TextStyle(color: AppTheme.textGrey, fontSize: 13),
+        hintStyle:
+        TextStyle(color: AppTheme.textGrey, fontSize: 13),
       ),
-      validator: (v) =>
-      (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
+      validator: (v) => (v == null || v.trim().isEmpty)
+          ? 'Ingresa tu nombre'
+          : null,
     ),
   );
 
@@ -322,6 +382,8 @@ class _CardForm extends GetView<CheckoutController> {
   );
 }
 
+// ── Toggle guardar tarjeta ─────────────────────────────────────────────────────
+
 class _SaveCardToggle extends GetView<CheckoutController> {
   @override
   Widget build(BuildContext context) {
@@ -336,20 +398,18 @@ class _SaveCardToggle extends GetView<CheckoutController> {
         children: [
           const Text('Save card data for future payments',
               style: TextStyle(fontSize: 13, color: AppTheme.textDark)),
-          GetX<CheckoutController>(
-            builder: (ctrl) => Switch(
-              value: ctrl.saveCard.value,
-              onChanged: ctrl.toggleSaveCard,
-              activeThumbColor: AppTheme.primaryBlue,
-            ),
-          ),
+          Obx(() => Switch(
+            value: controller.saveCard.value,
+            onChanged: controller.toggleSaveCard,
+            activeThumbColor: AppTheme.primaryBlue,
+          )),
         ],
       ),
     );
   }
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────────
+// ── Formatters ─────────────────────────────────────────────────────────────────
 
 class _CardNumberFormatter extends TextInputFormatter {
   @override
