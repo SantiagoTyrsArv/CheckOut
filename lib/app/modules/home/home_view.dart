@@ -15,21 +15,33 @@ class HomeView extends GetView<HomeController> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundGrey,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            _buildCategories(),
-            _buildFeaturedSection(),
-            _buildGamesGrid(),
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            // ── Header + SearchBar + Categorías (siempre visible)
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildSearchBar()),
+            SliverToBoxAdapter(child: _buildCategories()),
+
+            // ── Destacados (se oculta al hacer scroll)
+            SliverAppBar(
+              automaticallyImplyLeading: false,
+              backgroundColor: AppTheme.backgroundGrey,
+              expandedHeight: 220,
+              floating: true,   // aparece al subir
+              snap: true,       // animación instantánea
+              elevation: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.none,
+                background: _buildFeaturedSection(),
+              ),
+            ),
           ],
+          body: _buildGamesGrid(),
         ),
       ),
     );
   }
 
-  // ── Header estático, no necesita Obx
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -46,7 +58,8 @@ class HomeView extends GetView<HomeController> {
                     color: AppTheme.textDark,
                   )),
               Text('Encuentra tu próximo juego',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textGrey)),
+                  style:
+                  TextStyle(fontSize: 13, color: AppTheme.textGrey)),
             ],
           ),
           Row(
@@ -98,6 +111,13 @@ class HomeView extends GetView<HomeController> {
                 );
               }),
               const SizedBox(width: 10),
+              // ── Botón ver Hive (solo para demostración académica)
+              IconButton(
+                onPressed: () => Get.toNamed(AppRoutes.orders),
+                icon: const Icon(Icons.storage,
+                    color: AppTheme.primaryBlue),
+                tooltip: 'Ver Hive',
+              ),
               const CircleAvatar(
                 backgroundColor: AppTheme.primaryBlue,
                 child: Icon(Icons.person, color: Colors.white),
@@ -109,7 +129,6 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -118,7 +137,8 @@ class HomeView extends GetView<HomeController> {
         decoration: InputDecoration(
           hintText: 'Buscar videojuegos...',
           hintStyle: const TextStyle(color: AppTheme.textGrey),
-          prefixIcon: const Icon(Icons.search, color: AppTheme.primaryBlue),
+          prefixIcon:
+          const Icon(Icons.search, color: AppTheme.primaryBlue),
           filled: true,
           fillColor: AppTheme.cardWhite,
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -131,7 +151,6 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // ── Categorías: Obx directo sobre selectedCategory
   Widget _buildCategories() {
     return SizedBox(
       height: 42,
@@ -149,8 +168,8 @@ class HomeView extends GetView<HomeController> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppTheme.primaryBlue
@@ -159,8 +178,8 @@ class HomeView extends GetView<HomeController> {
                   boxShadow: isSelected
                       ? [
                     BoxShadow(
-                      color:
-                      AppTheme.primaryBlue.withValues(alpha: 0.3),
+                      color: AppTheme.primaryBlue
+                          .withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     )
@@ -169,9 +188,12 @@ class HomeView extends GetView<HomeController> {
                 ),
                 child: Text(cat,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : AppTheme.textDark,
-                      fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.white
+                          : AppTheme.textDark,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       fontSize: 13,
                     )),
               ),
@@ -182,7 +204,6 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // ── Featured: Obx sobre featuredGames (RxList)
   Widget _buildFeaturedSection() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -218,51 +239,66 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // ── Grid: Obx sobre filteredGames (RxList)
   Widget _buildGamesGrid() {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Todos los juegos',
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('Todos los juegos',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textDark,
                 )),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Obx(() {
-                final games = controller.filteredGames;
-                return GridView.builder(
-                  gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.72,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+          ),
+          Expanded(
+            child: Obx(() {
+              final games = controller.filteredGames;
+              if (games.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off,
+                          size: 60, color: AppTheme.textGrey),
+                      SizedBox(height: 12),
+                      Text('No se encontraron juegos',
+                          style: TextStyle(
+                              color: AppTheme.textGrey, fontSize: 15)),
+                    ],
                   ),
-                  itemCount: games.length,
-                  itemBuilder: (_, i) {
-                    final game = games[i];
-                    return _GameCard(
-                      game: game,
-                      onTap: () => controller.goToCheckout(game),
-                    );
-                  },
                 );
-              }),
-            ),
-          ],
-        ),
+              }
+              return GridView.builder(
+                padding: const EdgeInsets.only(bottom: 20),
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.72,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: games.length,
+                itemBuilder: (_, i) {
+                  final game = games[i];
+                  return _GameCard(
+                    game: game,
+                    onTap: () => controller.goToCheckout(game),
+                  );
+                },
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─── Widgets privados — sin acceso al controller ───────────────────────────────
+// ─── Widgets privados ──────────────────────────────────────────────────────────
 
 class _FeaturedCard extends StatelessWidget {
   final GameModel game;
@@ -313,7 +349,9 @@ class _FeaturedCard extends StatelessWidget {
               ),
             ),
             Positioned(
-              bottom: 12, left: 12, right: 12,
+              bottom: 12,
+              left: 12,
+              right: 12,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -331,7 +369,8 @@ class _FeaturedCard extends StatelessWidget {
             ),
             if (game.hasDiscount)
               Positioned(
-                top: 10, right: 10,
+                top: 10,
+                right: 10,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 4),
@@ -448,11 +487,13 @@ class _GameCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 12, color: Colors.amber),
+                      const Icon(Icons.star,
+                          size: 12, color: Colors.amber),
                       const SizedBox(width: 2),
                       Text('${game.rating}',
                           style: const TextStyle(
-                              fontSize: 11, color: AppTheme.textGrey)),
+                              fontSize: 11,
+                              color: AppTheme.textGrey)),
                     ],
                   ),
                 ],

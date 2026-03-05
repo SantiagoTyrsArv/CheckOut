@@ -7,6 +7,7 @@ import '../modules/checkout/payment_confirm_view.dart';
 import '../modules/checkout/payment_data_view.dart';
 import '../modules/detail/detail_view.dart';
 import '../modules/home/home_view.dart';
+import '../modules/orders/orders_view.dart';
 import 'app_routes.dart';
 
 class AppPages {
@@ -23,6 +24,10 @@ class AppPages {
     GetPage(
       name: AppRoutes.cart,
       page: () => const CartView(),
+    ),
+    GetPage(
+      name: AppRoutes.orders,
+      page: () => const OrdersView(),
     ),
     GetPage(
       name: AppRoutes.paymentData,
